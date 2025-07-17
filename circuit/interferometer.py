@@ -1,4 +1,5 @@
 import numpy as np
+from .beam_splitter import beam_splitter as bs
 
 class interferometer:
     """This class defines an interferometer. 
@@ -22,8 +23,18 @@ class interferometer:
             BS (Beamsplitter): a Beamsplitter instance
         """
         self.BS_list.append(BS)
+    
+    def add_phase_shifter(self,mode,phase):
+        """Use this to manually add a phase shift to a selected mode on a line of the interferometer
+        
+        Args:
+            mode (int): the mode index. The first mode is mode 1
+            phase (float): the real-valued phase to add
+        """
+        # We will add a beam splitter with the same input modes to signal that it's just a phase shifter
+        self.BS_list.append(bs(mode,mode,0,phase))
 
-    def add_phase(self, mode, phase):    
+    def add_output_phase(self, mode, phase):    
         """Use this to manually add a phase shift to a selected mode at the output of the interferometer
         
         Args:
@@ -56,15 +67,20 @@ class interferometer:
 
         for BS in self.BS_list:
             T = np.eye(N, dtype=np.complex128)
-            T[BS.mode1 - 1, BS.mode1 - 1] = np.exp(1j * BS.phi) * np.cos(BS.theta)
-            T[BS.mode1 - 1, BS.mode2 - 1] = -np.sin(BS.theta)
-            T[BS.mode2 - 1, BS.mode1 - 1] = np.exp(1j * BS.phi) * np.sin(BS.theta)
-            T[BS.mode2 - 1, BS.mode2 - 1] = np.cos(BS.theta)
-            # Add loss if specified
-            if LN_dB != 0.0:
-                loss = 10 ** (-LN_dB / 10)
-                T[BS.mode1 - 1, BS.mode1 - 1] *= np.sqrt(loss)
-                T[BS.mode2 - 1, BS.mode2 - 1] *= np.sqrt(loss)
+            if BS.mode1 != BS.mode2:
+                # Actual beam splitter transformation
+                T[BS.mode1 - 1, BS.mode1 - 1] = np.exp(1j * BS.phi) * np.cos(BS.theta)
+                T[BS.mode1 - 1, BS.mode2 - 1] = -np.sin(BS.theta)
+                T[BS.mode2 - 1, BS.mode1 - 1] = np.exp(1j * BS.phi) * np.sin(BS.theta)
+                T[BS.mode2 - 1, BS.mode2 - 1] = np.cos(BS.theta)
+                # Add loss if specified
+                if LN_dB != 0.0:
+                    loss = 10 ** (-LN_dB / 10)
+                    T[BS.mode1 - 1, BS.mode1 - 1] *= np.sqrt(loss)
+                    T[BS.mode2 - 1, BS.mode2 - 1] *= np.sqrt(loss)
+            else:
+                # This is a phase shifter, so we just apply a phase shift to the mode
+                T[BS.mode1-1, BS.mode1-1] = np.exp(1j * BS.phi)
             U = np.matmul(T,U)
 
         while np.size(self.output_phases) < N:  # Autofill for users who don't want to bother with output phases
@@ -86,52 +102,77 @@ class interferometer:
         N = self.count_modes()
         mode_tracker = np.zeros(N)
 
+        # Draw the input lines
         for ii in range(N):
-            plt.plot((-1, 0), (ii, ii), lw=1, color="blue")
+            plt.plot((-1, 0), (ii, ii), lw=1, color="black")
 
+        # Draw the beam splitters / phase shifters
         for BS in self.BS_list:
             x = np.max([mode_tracker[BS.mode1 - 1], mode_tracker[BS.mode2 - 1]])
-            plt.plot((x+0.3, x+1), (N - BS.mode1, N - BS.mode2), lw=1, color="blue")
-            plt.plot((x, x+0.3), (N - BS.mode1, N - BS.mode1), lw=1, color="blue")
-            plt.plot((x, x+0.3), (N - BS.mode2, N - BS.mode2), lw=1, color="blue")
-            plt.plot((x+0.3, x+1), (N - BS.mode2, N - BS.mode1), lw=1, color="blue")
-            plt.plot((x+0.4, x+0.9), (N - (BS.mode2 + BS.mode1)/2, N - (BS.mode2 + BS.mode1)/2), lw=1, color="blue")
-            reflectivity = "{:2f}".format(np.cos(BS.theta)**2)
-            plt.text(x+0.9, N + 0.05 - (BS.mode2 + BS.mode1)/2, reflectivity[0:3], color="green", fontsize=7)
+            if BS.mode1 != BS.mode2:
+                # Draw the beam splitter lines
+                plt.plot((x+0.3, x+1), (N - BS.mode1, N - BS.mode2), lw=1, color="lime")
+                plt.plot((x, x+0.3), (N - BS.mode2, N - BS.mode2), lw=1, color="lime")
+                plt.plot((x+0.3, x+1), (N - BS.mode2, N - BS.mode1), lw=1, color="lime")
+                plt.plot((x+0.4, x+0.9), (N - (BS.mode2 + BS.mode1)/2, N - (BS.mode2 + BS.mode1)/2), lw=1, color="lime")
+                reflectivity = "{:2f}".format(np.cos(BS.theta)**2)
+                plt.text(x+0.9, N + 0.05 - (BS.mode2 + BS.mode1)/2, reflectivity[0:3], color="lime", fontsize=7)
 
-            plt.plot((x+0.15, x+0.15), (N+0.3-(BS.mode2 + BS.mode1)/2., N+0.7-(BS.mode2 + BS.mode1)/2.), lw=1, color="blue")
-            circle = plt.Circle((x+0.15, N+0.5-(BS.mode2 + BS.mode1)/2.), 0.1, fill=False)
+            # Draw the phase shifter of the beam splitter (or the stand-alone one)
+            plt.plot((x, x+0.3), (N - BS.mode1, N - BS.mode1), lw=1, color="blueviolet")
+            if BS.mode1 != BS.mode2:
+                plt.plot((x+0.15, x+0.15), (N+0.3-(BS.mode2 + BS.mode1)/2., N+0.7-(BS.mode2 + BS.mode1)/2.), lw=1, color="blueviolet")
+                circle = plt.Circle((x+0.15, N+0.5-(BS.mode2 + BS.mode1)/2.), 0.1, fill=False, color="blueviolet")
+            else:
+                plt.plot((x+0.15, x+0.15), (N-0.2-BS.mode1, N+0.2-BS.mode1), lw=1, color="blueviolet")
+                circle = plt.Circle((x+0.15, N-BS.mode1), 0.1, fill=False, color="blueviolet")
             plt.gca().add_patch(circle)
+            
+            # Draw the phase label
             phase = "{:2f}".format(BS.phi)
             if BS.phi > 0:
-                plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:3], color="red", fontsize=7)
+                if BS.mode1 != BS.mode2:
+                    plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:3], color="blueviolet", fontsize=7)
+                else:
+                    plt.text(x+0.2, N+0.2-BS.mode1, phase[0:3], color="blueviolet", fontsize=7)
             else:
-                plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:4], color="red", fontsize=7)
-            if x > mode_tracker[BS.mode1-1]:
-                plt.plot((mode_tracker[BS.mode1-1], x), (N-BS.mode1, N-BS.mode1), lw=1, color="blue")
-            if x > mode_tracker[BS.mode2-1]:
-                plt.plot((mode_tracker[BS.mode2-1], x), (N-BS.mode2, N-BS.mode2), lw=1, color="blue")
-            mode_tracker[BS.mode1-1] = x+1
-            mode_tracker[BS.mode2-1] = x+1
+                if BS.mode1 != BS.mode2:
+                    plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:4], color="blueviolet", fontsize=7)
+                else:
+                    plt.text(x+0.2, N+0.2-BS.mode1, phase[0:4], color="blueviolet", fontsize=7)
 
+            # Draw filler lines
+            if x > mode_tracker[BS.mode1-1]:
+                plt.plot((mode_tracker[BS.mode1-1], x), (N-BS.mode1, N-BS.mode1), lw=1, color="black")
+            if x > mode_tracker[BS.mode2-1]:
+                plt.plot((mode_tracker[BS.mode2-1], x), (N-BS.mode2, N-BS.mode2), lw=1, color="black")
+
+            # Update the mode tracker
+            if BS.mode1 != BS.mode2:
+                mode_tracker[BS.mode1-1] = x+1
+                mode_tracker[BS.mode2-1] = x+1
+            else:
+                mode_tracker[BS.mode1-1] = x+0.3
+
+        # Draw the output phase shifters
         max_x = np.max(mode_tracker)
         for ii in range(N):
-            plt.plot((mode_tracker[ii], max_x+1), (N-ii-1, N-ii-1), lw=1, color="blue")
+            plt.plot((mode_tracker[ii], max_x+1), (N-ii-1, N-ii-1), lw=1, color="black")
             while np.size(self.output_phases) < N:  # Autofill for users who don't want to bother with output phases
                 self.output_phases.append(0)
             if self.output_phases[ii] != 0:
-                plt.plot((max_x+0.5, max_x+0.5), (N-ii-1.2, N-ii-0.8), lw=1, color="blue")
-                circle = plt.Circle((max_x+0.5, N-ii-1), 0.1, fill=False)
+                plt.plot((max_x+0.5, max_x+0.5), (N-ii-1.2, N-ii-0.8), lw=1, color="deeppink")
+                circle = plt.Circle((max_x+0.5, N-ii-1), 0.1, fill=False, color="deeppink")
                 plt.gca().add_patch(circle)
                 phase = str(self.output_phases[ii])
                 if BS.phi > 0:
-                    plt.text(max_x+0.6, N-ii-0.8, phase[0:3], color="red", fontsize=7)
+                    plt.text(max_x+0.6, N-ii-0.8, phase[0:3], color="deeppink", fontsize=7)
                 else:
-                    plt.text(max_x+0.6, N-ii-0.8, phase[0:4], color="red", fontsize=7)
+                    plt.text(max_x+0.6, N-ii-0.8, phase[0:4], color="deeppink", fontsize=7)
 
 
-        plt.text(max_x/2, -0.7, "green: BS reflectivity", color="green", fontsize=10)
-        plt.text(max_x/2, -1.4, "red: phase shift", color="red", fontsize=10)
+        plt.text(max_x/2, -0.7, "lime: BS reflectivity", color="lime", fontsize=10)
+        plt.text(max_x/2, -1.4, "violet: phase shift", color="blueviolet", fontsize=10)
         plt.text(-1, N-0.3, "Light in", fontsize=10)
         plt.text(max_x+0.5, N-0.3, "Light out", fontsize=10)
         plt.gca().axes.set_ylim([-1.8, N+0.2])
