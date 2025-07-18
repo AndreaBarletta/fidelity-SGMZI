@@ -119,28 +119,31 @@ class interferometer:
                 plt.text(x+0.9, N + 0.05 - (BS.mode2 + BS.mode1)/2, reflectivity[0:3], color="lime", fontsize=7)
 
             # Draw the phase shifter of the beam splitter (or the stand-alone one)
-            plt.plot((x, x+0.3), (N - BS.mode1, N - BS.mode1), lw=1, color="blueviolet")
-            if BS.mode1 != BS.mode2:
-                plt.plot((x+0.15, x+0.15), (N+0.3-(BS.mode2 + BS.mode1)/2., N+0.7-(BS.mode2 + BS.mode1)/2.), lw=1, color="blueviolet")
-                circle = plt.Circle((x+0.15, N+0.5-(BS.mode2 + BS.mode1)/2.), 0.1, fill=False, color="blueviolet")
-            else:
-                plt.plot((x+0.15, x+0.15), (N-0.2-BS.mode1, N+0.2-BS.mode1), lw=1, color="blueviolet")
-                circle = plt.Circle((x+0.15, N-BS.mode1), 0.1, fill=False, color="blueviolet")
-            plt.gca().add_patch(circle)
+            if(BS.phi != 0):
+                plt.plot((x, x+0.3), (N - BS.mode1, N - BS.mode1), lw=1, color="blueviolet")
+                if BS.mode1 != BS.mode2:
+                    plt.plot((x+0.15, x+0.15), (N+0.3-(BS.mode2 + BS.mode1)/2., N+0.7-(BS.mode2 + BS.mode1)/2.), lw=1, color="blueviolet")
+                    circle = plt.Circle((x+0.15, N+0.5-(BS.mode2 + BS.mode1)/2.), 0.1, fill=False, color="blueviolet")
+                else:
+                    plt.plot((x+0.15, x+0.15), (N-0.2-BS.mode1, N+0.2-BS.mode1), lw=1, color="blueviolet")
+                    circle = plt.Circle((x+0.15, N-BS.mode1), 0.1, fill=False, color="blueviolet")
+                plt.gca().add_patch(circle)
             
-            # Draw the phase label
-            phase = "{:2f}".format(BS.phi)
-            if BS.phi > 0:
-                if BS.mode1 != BS.mode2:
-                    plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:3], color="blueviolet", fontsize=7)
+                # Draw the phase label
+                phase = "{:2f}".format(BS.phi)
+                if BS.phi > 0:
+                    if BS.mode1 != BS.mode2:
+                        plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:3], color="blueviolet", fontsize=7)
+                    else:
+                        plt.text(x+0.2, N+0.2-BS.mode1, phase[0:3], color="blueviolet", fontsize=7)
                 else:
-                    plt.text(x+0.2, N+0.2-BS.mode1, phase[0:3], color="blueviolet", fontsize=7)
+                    if BS.mode1 != BS.mode2:
+                        plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:4], color="blueviolet", fontsize=7)
+                    else:
+                        plt.text(x+0.2, N+0.2-BS.mode1, phase[0:4], color="blueviolet", fontsize=7)
             else:
-                if BS.mode1 != BS.mode2:
-                    plt.text(x+0.2, N+0.7-(BS.mode2 + BS.mode1)/2., phase[0:4], color="blueviolet", fontsize=7)
-                else:
-                    plt.text(x+0.2, N+0.2-BS.mode1, phase[0:4], color="blueviolet", fontsize=7)
-
+                plt.plot((x, x+0.3), (N - BS.mode1, N - BS.mode1), lw=1, color="black")
+                
             # Draw filler lines
             if x > mode_tracker[BS.mode1-1]:
                 plt.plot((mode_tracker[BS.mode1-1], x), (N-BS.mode1, N-BS.mode1), lw=1, color="black")
