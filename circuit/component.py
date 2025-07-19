@@ -51,7 +51,7 @@ class component:
         
     - Barrier:
         - No transformation
-        - Involved all the modes in the interferometer.
+        - Involved all the modes in the interferometer (we put -1 for the draw function to work).
         - Parameters are not used.
         
     Note: The barrier component is used for alignment purposes and does not affect the transformation matrix.

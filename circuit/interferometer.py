@@ -70,7 +70,8 @@ class interferometer:
         """
 
         import matplotlib.pyplot as plt
-        plt.figure()
+        import matplotlib.patches as patches
+        plt.figure(figsize=(10, 6))
         N = self.count_modes()
         mode_tracker = np.zeros(N)
 
@@ -140,9 +141,13 @@ class interferometer:
                 plt.gca().add_patch(circle)
                 #Update the mode tracker
                 mode_tracker[comp.modes[0] - 1] = x + 0.3
+                
             elif comp.type == cmp_type.BARRIER:
                 # Update the mode tracker
-                mode_tracker[comp.modes[0] - 1] = x + 0.3
+                max_x = np.max(mode_tracker)
+                for i in range(N):
+                    plt.plot((mode_tracker[i], max_x+0.1), (N-i-1, N-i-1), lw=1, color=cmp_color.LINE.value)
+                    mode_tracker[i] = max_x+0.1
             else:
                 raise ValueError("Unknown component type: {}".format(comp.type))
             
@@ -150,23 +155,27 @@ class interferometer:
         # Draw the output phase shifters
         max_x = np.max(mode_tracker)
         color = cmp_color.OUTPUT_PHASE.value
-        for ii in range(N):
-            plt.plot((mode_tracker[ii], max_x+1), (N-ii-1, N-ii-1), lw=1, color=cmp_color.LINE.value)
+        for i in range(N):
+            plt.plot((mode_tracker[i], max_x+1), (N-i-1, N-i-1), lw=1, color=cmp_color.LINE.value)
             while np.size(self.output_phases) < N:  # Autofill for users who don't want to bother with output phases
                 self.output_phases.append(0)
-            if self.output_phases[ii] != 0:
-                plt.plot((max_x+0.5, max_x+0.5), (N-ii-1.2, N-ii-0.8), lw=1, color=color)
-                circle = plt.Circle((max_x+0.5, N-ii-1), 0.1, fill=False, color=color)
+            if self.output_phases[i] != 0:
+                plt.plot((max_x+0.5, max_x+0.5), (N-i-1.2, N-i-0.8), lw=1, color=color)
+                circle = plt.Circle((max_x+0.5, N-i-1), 0.1, fill=False, color=color)
                 plt.gca().add_patch(circle)
-                phase = str(self.output_phases[ii])
-                if self.output_phases[ii] > 0:
-                    plt.text(max_x+0.6, N-ii-0.8, phase[0:3], color=color, fontsize=7)
+                phase = str(self.output_phases[i])
+                if self.output_phases[i] > 0:
+                    plt.text(max_x+0.6, N-i-0.8, phase[0:3], color=color, fontsize=7)
                 else:
-                    plt.text(max_x+0.6, N-ii-0.8, phase[0:4], color=color, fontsize=7)
+                    plt.text(max_x+0.6, N-i-0.8, phase[0:4], color=color, fontsize=7)
 
         plt.text(-1, N-0.3, "Light in", fontsize=10)
         plt.text(max_x+0.5, N-0.3, "Light out", fontsize=10)
-        plt.gca().axes.set_ylim([-1.8, N+0.2])
+        plt.text(-1, -1.7, "Beam Splitter", color=cmp_color.BEAM_SPLITTER.value, fontsize=10)
+        plt.text(max_x-2, -1.7, "Loss", color=cmp_color.LOSS_ELEMENT.value, fontsize=10)
+        plt.text(-1, -2.1, "Phase Shifter", color=cmp_color.PHASE_SHIFTER.value, fontsize=10)
+        plt.text(max_x-2, -2.1, "Output phase", color=cmp_color.OUTPUT_PHASE.value, fontsize=10)
+        plt.gca().axes.set_ylim([-2.5, N+0.2])
         plt.axis("off")
         if show_plot:
             plt.show()
